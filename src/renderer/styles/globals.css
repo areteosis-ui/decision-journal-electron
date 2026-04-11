@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 243 236 217;           /* #F3ECD9 warm cream */
+  --bg-elevated: 251 247 236;  /* #FBF7EC */
+  --sidebar: 239 231 209;      /* #EFE7D1 */
+  --border: 227 217 191;       /* #E3D9BF */
+  --text: 42 36 28;            /* #2A241C */
+  --text-muted: 122 111 92;    /* #7A6F5C */
+  --accent: 58 47 36;          /* #3A2F24 */
+  --accent-text: 251 247 236;  /* #FBF7EC */
+  --nav-active: 228 217 188;   /* #E4D9BC */
+}
+
+:root.dark {
+  --bg: 31 27 21;              /* #1F1B15 */
+  --bg-elevated: 42 37 28;     /* #2A251C */
+  --sidebar: 26 23 18;         /* #1A1712 */
+  --border: 58 51 39;          /* #3A3327 */
+  --text: 239 230 208;         /* #EFE6D0 */
+  --text-muted: 154 143 120;   /* #9A8F78 */
+  --accent: 42 37 28;          /* same as bg-elevated — outlined button in dark */
+  --accent-text: 239 230 208;  /* #EFE6D0 */
+  --nav-active: 46 40 32;      /* #2E2820 */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  overflow: hidden;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.font-serif {
+  font-family: 'Fraunces Variable', Fraunces, ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variation-settings: 'SOFT' 30, 'WONK' 0;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--border));
+  border-radius: 6px;
+  border: 2px solid rgb(var(--bg));
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--text-muted) / 0.5);
+}
+
+/* Focus rings */
+:focus-visible {
+  outline: 2px solid rgb(var(--text-muted));
+  outline-offset: 2px;
+  border-radius: 4px;
+}

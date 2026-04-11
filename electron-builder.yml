@@ -1,0 +1,39 @@
+appId: app.sinameraji.decisionjournal
+productName: Decision Journal
+copyright: © 2026 Sina Meraji
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+
+asarUnpack:
+  - resources/**
+  - '**/*.node'
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true
+  extendInfo:
+    NSHumanReadableCopyright: © 2026 Sina Meraji
+    LSApplicationCategoryType: public.app-category.productivity
+
+dmg:
+  artifactName: ${productName}-${version}-universal.dmg
+
+publish: null
