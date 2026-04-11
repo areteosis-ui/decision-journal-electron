@@ -1,11 +1,24 @@
 import { app, ipcMain, nativeTheme } from 'electron'
 import { join } from 'node:path'
 import type Database from 'better-sqlite3-multiple-ciphers'
-import type { ThemeMode, UnlockResult, VaultStatus } from '@shared/ipc-contract'
+import type {
+  DecisionCreateInput,
+  DecisionUpdateInput,
+  ThemeMode,
+  UnlockResult,
+  VaultStatus
+} from '@shared/ipc-contract'
 import { Vault, isValidPinFormat } from './crypto/vault'
 import { canPromptTouchId, promptTouchId } from './crypto/keychain'
 import { closeDb, openEncryptedDb } from './db/open'
-import { listDecisions, seedIfEmpty } from './db/seed'
+import { seedIfEmpty } from './db/seed'
+import {
+  createDecision,
+  deleteDecision,
+  getDecision,
+  listDecisions,
+  updateDecision
+} from './db/decisions'
 import { applyThemeMode, loadThemePreference, saveThemePreference } from './theme'
 
 type DB = Database.Database
@@ -142,6 +155,35 @@ export function registerIpcHandlers(): void {
     }
   )
 
+  ipcMain.handle('vault:verify-pin', async (_evt, pin: string): Promise<UnlockResult> => {
+    const vault = getVault()
+    try {
+      const result = await vault.unlock(pin)
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: result.error,
+          cooldownUntil: result.cooldownUntil,
+          failedAttempts: result.failedAttempts
+        }
+      }
+      result.masterKey.fill(0)
+      return { ok: true }
+    } catch (err) {
+      console.error('[vault:verify-pin]', err)
+      return { ok: false, error: 'internal' }
+    }
+  })
+
+  ipcMain.handle(
+    'vault:prompt-touchid-action',
+    async (_evt, reason: string): Promise<{ ok: boolean }> => {
+      if (!canPromptTouchId()) return { ok: false }
+      const ok = await promptTouchId(reason)
+      return { ok }
+    }
+  )
+
   ipcMain.handle('vault:unlock-touchid', async (): Promise<UnlockResult> => {
     const vault = getVault()
     try {
@@ -161,6 +203,29 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('decisions:list', async () => {
     if (!session.db) return []
     return listDecisions(session.db)
+  })
+
+  ipcMain.handle('decisions:get', async (_evt, id: string) => {
+    if (!session.db) return null
+    return getDecision(session.db, id)
+  })
+
+  ipcMain.handle('decisions:create', async (_evt, input: DecisionCreateInput) => {
+    if (!session.db) throw new Error('Database is locked')
+    return createDecision(session.db, input)
+  })
+
+  ipcMain.handle(
+    'decisions:update',
+    async (_evt, id: string, patch: DecisionUpdateInput) => {
+      if (!session.db) throw new Error('Database is locked')
+      return updateDecision(session.db, id, patch)
+    }
+  )
+
+  ipcMain.handle('decisions:delete', async (_evt, id: string) => {
+    if (!session.db) throw new Error('Database is locked')
+    deleteDecision(session.db, id)
   })
 
   ipcMain.handle('theme:get', async (): Promise<ThemeMode> => loadThemePreference())

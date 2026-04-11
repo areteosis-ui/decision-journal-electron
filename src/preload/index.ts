@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, Decision, ThemeMode, UnlockResult, VaultStatus } from '@shared/ipc-contract'
+import type {
+  Api,
+  Decision,
+  DecisionCreateInput,
+  DecisionUpdateInput,
+  ThemeMode,
+  UnlockResult,
+  VaultStatus
+} from '@shared/ipc-contract'
 
 const api: Api = {
   vault: {
@@ -13,10 +21,19 @@ const api: Api = {
       ipcRenderer.invoke('vault:set-touchid', enabled, pin),
     enableTouchIdCurrentSession: () =>
       ipcRenderer.invoke('vault:enable-touchid-current-session'),
-    unlockWithTouchId: () => ipcRenderer.invoke('vault:unlock-touchid')
+    unlockWithTouchId: () => ipcRenderer.invoke('vault:unlock-touchid'),
+    verifyPin: (pin: string) => ipcRenderer.invoke('vault:verify-pin', pin),
+    promptTouchIdForAction: (reason: string) =>
+      ipcRenderer.invoke('vault:prompt-touchid-action', reason)
   },
   decisions: {
-    list: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list')
+    list: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list'),
+    get: (id: string): Promise<Decision | null> => ipcRenderer.invoke('decisions:get', id),
+    create: (input: DecisionCreateInput): Promise<Decision> =>
+      ipcRenderer.invoke('decisions:create', input),
+    update: (id: string, patch: DecisionUpdateInput): Promise<Decision> =>
+      ipcRenderer.invoke('decisions:update', id, patch),
+    delete: (id: string): Promise<void> => ipcRenderer.invoke('decisions:delete', id)
   },
   theme: {
     get: (): Promise<ThemeMode> => ipcRenderer.invoke('theme:get'),
