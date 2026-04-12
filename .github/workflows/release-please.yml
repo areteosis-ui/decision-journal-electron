@@ -82,26 +82,29 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npm run dist:mac
+        run: npm run build && electron-builder --mac --publish never
 
       - name: Upload artifacts (for debugging)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
+          name: macos-release
           path: |
             release/*.dmg
             release/*.dmg.blockmap
+            release/*.zip
+            release/*.zip.blockmap
+            release/latest-mac.yml
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Upload DMG to GitHub Release
+      - name: Upload to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="${{ needs.release-please.outputs.tag_name }}"
-          gh release upload "$TAG" release/*.dmg release/*.dmg.blockmap --clobber
+          gh release upload "$TAG" release/*.dmg release/*.dmg.blockmap release/*.zip release/*.zip.blockmap release/latest-mac.yml --clobber
 
       - name: Cleanup keychain
         if: always()
