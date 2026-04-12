@@ -83,6 +83,26 @@ export type DecisionCreateInput = Pick<
 
 export type DecisionUpdateInput = Partial<DecisionCreateInput>
 
+export interface WhisperModelInfo {
+  name: string
+  label: string
+  sizeBytes: number
+  sizeLabel: string
+  description: string
+}
+
+export interface WhisperStatus {
+  activeModel: string | null
+  installedModels: string[]
+  totalMemGB: number
+}
+
+export interface WhisperDownloadProgress {
+  name: string
+  loaded: number
+  total: number
+}
+
 export interface Api {
   vault: {
     status(): Promise<VaultStatus>
@@ -111,6 +131,16 @@ export interface Api {
   app: {
     version(): Promise<string>
     platform(): Promise<string>
+  }
+  transcription: {
+    getStatus(): Promise<WhisperStatus>
+    listAvailableModels(): Promise<WhisperModelInfo[]>
+    downloadModel(name: string): Promise<void>
+    cancelDownload(): Promise<void>
+    setActiveModel(name: string): Promise<void>
+    deleteModel(name: string): Promise<void>
+    transcribe(samples: ArrayBuffer): Promise<string>
+    onDownloadProgress(cb: (progress: WhisperDownloadProgress) => void): () => void
   }
 }
 

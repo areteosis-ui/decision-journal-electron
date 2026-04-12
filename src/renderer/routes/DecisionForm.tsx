@@ -16,6 +16,7 @@ import {
   type MentalState
 } from '@shared/ipc-contract'
 import { DatePicker, DateTimePicker } from '../components/DateTimePicker'
+import MicButton from '../components/voice/MicButton'
 
 type Mode = 'create' | 'edit'
 
@@ -503,15 +504,37 @@ function TextField({
   placeholder?: string
   autoFocus?: boolean
 }) {
+  const ref = useRef<HTMLInputElement>(null)
+
+  const handleInsert = useCallback(
+    (text: string) => {
+      const el = ref.current
+      if (el && el === document.activeElement) {
+        const start = el.selectionStart ?? value.length
+        const end = el.selectionEnd ?? value.length
+        onChange(value.slice(0, start) + text + value.slice(end))
+      } else {
+        onChange(value ? value + ' ' + text : text)
+      }
+    },
+    [value, onChange]
+  )
+
   return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      autoFocus={autoFocus}
-      className="h-11 w-full rounded-xl border border-border bg-bg px-3.5 text-[14px] text-text placeholder:text-text-muted focus:border-text/40 focus:outline-none focus:ring-2 focus:ring-text/10"
-    />
+    <div className="relative">
+      <input
+        ref={ref}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        className="h-11 w-full rounded-xl border border-border bg-bg px-3.5 pr-10 text-[14px] text-text placeholder:text-text-muted focus:border-text/40 focus:outline-none focus:ring-2 focus:ring-text/10"
+      />
+      <div className="absolute bottom-0 right-1.5 top-0 flex items-center">
+        <MicButton onInsert={handleInsert} />
+      </div>
+    </div>
   )
 }
 
@@ -535,15 +558,34 @@ function TextAreaField({
     el.style.height = `${Math.max(el.scrollHeight, rows * 24)}px`
   }, [value, rows])
 
+  const handleInsert = useCallback(
+    (text: string) => {
+      const el = ref.current
+      if (el && el === document.activeElement) {
+        const start = el.selectionStart ?? value.length
+        const end = el.selectionEnd ?? value.length
+        onChange(value.slice(0, start) + text + value.slice(end))
+      } else {
+        onChange(value ? value + '\n' + text : text)
+      }
+    },
+    [value, onChange]
+  )
+
   return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      rows={rows}
-      autoFocus={autoFocus}
-      className="w-full resize-none rounded-xl border border-border bg-bg px-3.5 py-3 text-[14px] leading-relaxed text-text placeholder:text-text-muted focus:border-text/40 focus:outline-none focus:ring-2 focus:ring-text/10"
-    />
+    <div className="relative">
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        autoFocus={autoFocus}
+        className="w-full resize-none rounded-xl border border-border bg-bg px-3.5 py-3 pr-10 text-[14px] leading-relaxed text-text placeholder:text-text-muted focus:border-text/40 focus:outline-none focus:ring-2 focus:ring-text/10"
+      />
+      <div className="absolute bottom-2 right-2">
+        <MicButton onInsert={handleInsert} />
+      </div>
+    </div>
   )
 }
 

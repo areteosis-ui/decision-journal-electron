@@ -6,7 +6,10 @@ import type {
   DecisionUpdateInput,
   ThemeMode,
   UnlockResult,
-  VaultStatus
+  VaultStatus,
+  WhisperDownloadProgress,
+  WhisperModelInfo,
+  WhisperStatus
 } from '@shared/ipc-contract'
 
 const api: Api = {
@@ -47,6 +50,25 @@ const api: Api = {
   app: {
     version: (): Promise<string> => ipcRenderer.invoke('app:version'),
     platform: (): Promise<string> => ipcRenderer.invoke('app:platform')
+  },
+  transcription: {
+    getStatus: (): Promise<WhisperStatus> => ipcRenderer.invoke('transcription:status'),
+    listAvailableModels: (): Promise<WhisperModelInfo[]> =>
+      ipcRenderer.invoke('transcription:available-models'),
+    downloadModel: (name: string): Promise<void> =>
+      ipcRenderer.invoke('transcription:download', name),
+    cancelDownload: (): Promise<void> => ipcRenderer.invoke('transcription:cancel-download'),
+    setActiveModel: (name: string): Promise<void> =>
+      ipcRenderer.invoke('transcription:set-active', name),
+    deleteModel: (name: string): Promise<void> =>
+      ipcRenderer.invoke('transcription:delete', name),
+    transcribe: (samples: ArrayBuffer): Promise<string> =>
+      ipcRenderer.invoke('transcription:transcribe', samples),
+    onDownloadProgress: (cb: (progress: WhisperDownloadProgress) => void) => {
+      const listener = (_: unknown, progress: WhisperDownloadProgress) => cb(progress)
+      ipcRenderer.on('whisper:download-progress', listener)
+      return () => ipcRenderer.removeListener('whisper:download-progress', listener)
+    }
   }
 }
 

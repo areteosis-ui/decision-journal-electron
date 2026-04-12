@@ -1,12 +1,16 @@
 import { app, ipcMain, nativeTheme } from 'electron'
 import { join } from 'node:path'
+import { totalmem } from 'node:os'
+import { unlinkSync } from 'node:fs'
 import type Database from 'better-sqlite3-multiple-ciphers'
 import type {
   DecisionCreateInput,
   DecisionUpdateInput,
   ThemeMode,
   UnlockResult,
-  VaultStatus
+  VaultStatus,
+  WhisperModelInfo,
+  WhisperStatus
 } from '@shared/ipc-contract'
 import { Vault, isValidPinFormat } from './crypto/vault'
 import { canPromptTouchId, promptTouchId } from './crypto/keychain'
@@ -20,6 +24,10 @@ import {
   updateDecision
 } from './db/decisions'
 import { applyThemeMode, loadThemePreference, saveThemePreference } from './theme'
+import { MODEL_CATALOG, listInstalled, isInstalled, modelPath } from './whisper/models'
+import { getActiveModel, setActiveModel } from './whisper/config'
+import { downloadModel, cancelDownload } from './whisper/download'
+import { transcribe, freeEngine } from './whisper/engine'
 
 type DB = Database.Database
 
@@ -238,6 +246,48 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('app:version', async () => app.getVersion())
   ipcMain.handle('app:platform', async () => process.platform)
+
+  ipcMain.handle('transcription:status', async (): Promise<WhisperStatus> => ({
+    activeModel: getActiveModel(),
+    installedModels: listInstalled(),
+    totalMemGB: Math.round(totalmem() / (1024 ** 3))
+  }))
+
+  ipcMain.handle('transcription:available-models', async (): Promise<WhisperModelInfo[]> =>
+    MODEL_CATALOG.map(({ name, label, sizeBytes, sizeLabel, description }) => ({
+      name,
+      label,
+      sizeBytes,
+      sizeLabel,
+      description
+    }))
+  )
+
+  ipcMain.handle('transcription:download', async (_evt, name: string): Promise<void> => {
+    await downloadModel(name)
+    if (!getActiveModel()) setActiveModel(name)
+  })
+
+  ipcMain.handle('transcription:cancel-download', async (): Promise<void> => {
+    cancelDownload()
+  })
+
+  ipcMain.handle('transcription:set-active', async (_evt, name: string): Promise<void> => {
+    if (!isInstalled(name)) throw new Error(`Model "${name}" is not installed`)
+    setActiveModel(name)
+  })
+
+  ipcMain.handle('transcription:delete', async (_evt, name: string): Promise<void> => {
+    const path = modelPath(name)
+    if (isInstalled(name)) unlinkSync(path)
+    if (getActiveModel() === name) setActiveModel(listInstalled()[0] ?? '')
+    await freeEngine()
+  })
+
+  ipcMain.handle('transcription:transcribe', async (_evt, buffer: ArrayBuffer): Promise<string> => {
+    const samples = new Float32Array(buffer)
+    return transcribe(samples)
+  })
 }
 
 export function clearSessionOnQuit(): void {
