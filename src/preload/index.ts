@@ -4,6 +4,8 @@ import type {
   Decision,
   DecisionCreateInput,
   DecisionUpdateInput,
+  ExportResult,
+  ImportResult,
   ThemeMode,
   UnlockResult,
   VaultStatus,
@@ -27,10 +29,17 @@ const api: Api = {
     unlockWithTouchId: () => ipcRenderer.invoke('vault:unlock-touchid'),
     verifyPin: (pin: string) => ipcRenderer.invoke('vault:verify-pin', pin),
     promptTouchIdForAction: (reason: string) =>
-      ipcRenderer.invoke('vault:prompt-touchid-action', reason)
+      ipcRenderer.invoke('vault:prompt-touchid-action', reason),
+    export: (): Promise<ExportResult> => ipcRenderer.invoke('vault:export'),
+    pickImportFolder: (): Promise<string | null> =>
+      ipcRenderer.invoke('vault:pick-import-folder'),
+    import: (folder: string, pin: string): Promise<ImportResult> =>
+      ipcRenderer.invoke('vault:import', folder, pin)
   },
   decisions: {
     list: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list'),
+    search: (query: string): Promise<Decision[]> =>
+      ipcRenderer.invoke('decisions:search', query),
     get: (id: string): Promise<Decision | null> => ipcRenderer.invoke('decisions:get', id),
     create: (input: DecisionCreateInput): Promise<Decision> =>
       ipcRenderer.invoke('decisions:create', input),
@@ -49,7 +58,9 @@ const api: Api = {
   },
   app: {
     version: (): Promise<string> => ipcRenderer.invoke('app:version'),
-    platform: (): Promise<string> => ipcRenderer.invoke('app:platform')
+    platform: (): Promise<string> => ipcRenderer.invoke('app:platform'),
+    quit: (): Promise<void> => ipcRenderer.invoke('app:quit'),
+    openExternal: (url: string) => ipcRenderer.invoke('app:open-external', url)
   },
   transcription: {
     getStatus: (): Promise<WhisperStatus> => ipcRenderer.invoke('transcription:status'),
