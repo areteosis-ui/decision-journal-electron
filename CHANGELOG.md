@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/sinameraji/decision-journal-electron/compare/v0.2.0...v0.3.0) (2026-04-12)
+
+
+### Features
+
+* add custom app icon ([48e964b](https://github.com/sinameraji/decision-journal-electron/commit/48e964bb875ce73cf18692ae6d88149d0ba80a57))
+* add custom app icon ([94b631b](https://github.com/sinameraji/decision-journal-electron/commit/94b631b98cd4fa1ac8eec53ce8ea61b05fb0968d))
+* set dock icon in dev mode ([3b569be](https://github.com/sinameraji/decision-journal-electron/commit/3b569be18db4d3e14fa27e809e20db03eedba22b))
+* set dock icon in dev mode ([21702c8](https://github.com/sinameraji/decision-journal-electron/commit/21702c83cf831cb29e19fc9c05fab0f74ca82806))
+
+
+### Bug Fixes
+
+* **ci:** add tag input to release workflow_dispatch ([2d2297b](https://github.com/sinameraji/decision-journal-electron/commit/2d2297b8f63b7b3a167c9b0695049d40c4acaffd))
+* **ci:** add tag input to release workflow_dispatch ([5e11f58](https://github.com/sinameraji/decision-journal-electron/commit/5e11f58d22e33191c04f0846594bd485b7593a33))
+* **ci:** chain DMG build into release-please and fix distutils error ([40d2ae5](https://github.com/sinameraji/decision-journal-electron/commit/40d2ae592c24ffd4ab05299f1848f81d71a3ff79))
+* **ci:** chain DMG build into release-please workflow ([590436f](https://github.com/sinameraji/decision-journal-electron/commit/590436f18bc6e520318620fa119f3aa32d1ab952))
+
 ## [0.2.0](https://github.com/sinameraji/decision-journal-electron/compare/v0.1.0...v0.2.0) (2026-04-12)
 
 
