@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import { NAV } from '../nav'
+import CommandPalette from './CommandPalette'
 
 export default function AppShell({ children }: PropsWithChildren) {
   const navigate = useNavigate()
@@ -29,6 +30,7 @@ export default function AppShell({ children }: PropsWithChildren) {
         <TopBar />
         <main className="flex-1 overflow-auto px-12 pt-10">{children}</main>
       </div>
+      <CommandPalette />
     </div>
   )
 }
