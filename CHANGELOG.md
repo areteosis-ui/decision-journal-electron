@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.7](https://github.com/sinameraji/decision-journal-electron/compare/v0.4.6...v0.4.7) (2026-04-12)
+
+
+### Bug Fixes
+
+* use literal artifact names to fix auto-update 404 ([630757b](https://github.com/sinameraji/decision-journal-electron/commit/630757b7d3c917e0601d22e76f550cf7e93a20a1))
+* use literal artifact names to prevent space-mangling mismatch ([67690f5](https://github.com/sinameraji/decision-journal-electron/commit/67690f57198ce7180446967ac222e28859eb4fef))
+
 ## [0.4.6](https://github.com/sinameraji/decision-journal-electron/compare/v0.4.5...v0.4.6) (2026-04-12)
 
 
