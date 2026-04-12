@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.6](https://github.com/sinameraji/decision-journal-electron/compare/v0.4.5...v0.4.6) (2026-04-12)
+
+
+### Bug Fixes
+
+* move zip artifactName to top-level, remove invalid zip block ([d8db762](https://github.com/sinameraji/decision-journal-electron/commit/d8db762881e8a2e0ae9ce9c8f417194eeba513b7))
+* point README download link to latest release ([a170786](https://github.com/sinameraji/decision-journal-electron/commit/a170786ccaeb5cd9279e399ba2486deace45e82d))
+* point README download link to latest release page ([60b552b](https://github.com/sinameraji/decision-journal-electron/commit/60b552ba063da45a4ecc02621c4b4799f976958e))
+* remove invalid zip config block in electron-builder ([7eb4890](https://github.com/sinameraji/decision-journal-electron/commit/7eb489069e938e7e650ae82f54295ccc3dbf477c))
+
 ## [0.4.5](https://github.com/sinameraji/decision-journal-electron/compare/v0.4.4...v0.4.5) (2026-04-12)
 
 
