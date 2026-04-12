@@ -160,6 +160,31 @@ export function updateDecision(db: DB, id: string, patch: DecisionUpdateInput): 
   return updated
 }
 
+export function reviewDecision(
+  db: DB,
+  id: string,
+  input: { outcome: string; lessonsLearned: string }
+): Decision {
+  const now = Date.now()
+  db.prepare(
+    `UPDATE decisions
+        SET outcome = @outcome,
+            lessons_learned = @lessonsLearned,
+            reviewed_at = @reviewedAt,
+            updated_at = @updatedAt
+      WHERE id = @id`
+  ).run({
+    id,
+    outcome: input.outcome,
+    lessonsLearned: input.lessonsLearned,
+    reviewedAt: now,
+    updatedAt: now
+  })
+  const updated = getDecision(db, id)
+  if (!updated) throw new Error('Decision not found after review')
+  return updated
+}
+
 export function deleteDecision(db: DB, id: string): void {
   db.prepare('DELETE FROM decisions WHERE id = ?').run(id)
 }
