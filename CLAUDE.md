@@ -53,21 +53,26 @@ Separate Zustand stores per concern in `src/renderer/store/`: `auth`, `theme`, `
 - **All renderer-to-main communication through `window.api`** — add new IPC methods to the contract in `src/shared/ipc-contract.ts`, implement in `src/main/ipc.ts`, bridge in `src/preload/index.ts`.
 - **Releases are CI-only** — signing secrets live in GitHub Actions secrets, never in local `.env` files. Tag push (`v*`) triggers the release workflow.
 
-## How to create a release
+## How releases work
 
-1. Update `version` in `package.json` (follow semver: patch for fixes, minor for features, major for breaking changes)
-2. Commit the version bump: `git commit -am "chore: bump version to X.Y.Z"`
-3. Push to main: `git push origin main`
-4. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
-5. Monitor the release workflow in GitHub Actions
-6. Once complete, edit the release on GitHub to add release notes describing what changed
+Releases are automated via [release-please](https://github.com/googleapis/release-please). **Do not manually bump `version` in `package.json` or push tags** — release-please handles both.
+
+1. Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `chore:`, etc.) on every commit to main.
+2. release-please maintains an open PR that accumulates version bumps and changelog entries.
+3. When you merge that PR, release-please creates a Git tag and GitHub Release, which triggers the build.
 
 ### Release infrastructure
 
-- GitHub Actions workflow at `.github/workflows/release.yml` triggers on `v*` tags
-- Builds a universal (arm64 + x86_64) signed and notarized DMG
+- **`.github/workflows/release-please.yml`** — runs on every push to main. The `release-please` job manages the version PR; the `build-mac` job only runs when a release is actually created (tag pushed). This is the **primary** release workflow.
+- **`.github/workflows/release.yml`** — legacy workflow that triggers on `v*` tags or manual `workflow_dispatch`. Kept as a fallback for manual re-releases.
+- Both workflows build a universal (arm64 + x86_64) signed and notarized DMG + ZIP.
 - Requires 5 secrets in GitHub Actions: `MACOS_CERTIFICATE`, `MACOS_CERTIFICATE_PWD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`
-- Output artifacts land on the GitHub Releases page as downloadable DMGs
+- Output artifacts: DMG, DMG blockmap, ZIP, ZIP blockmap, and `latest-mac.yml` (used by auto-updater) on the GitHub Releases page.
+- **Important:** electron-builder must run with `--publish never` in CI. Publishing is handled separately by `gh release upload`. The `publish` config in `electron-builder.yml` exists only so `electron-updater` knows where to check for updates at runtime.
+
+### Auto-update
+
+The app uses `electron-updater` to check for updates from GitHub Releases. The `publish` block in `electron-builder.yml` configures the update feed URL. The `latest-mac.yml` file uploaded to each release is what the updater reads to detect new versions.
 
 ## Data on disk
 
