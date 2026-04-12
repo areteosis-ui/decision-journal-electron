@@ -378,17 +378,15 @@ function ModelRow({
                   {isBusy ? <Loader2 size={13} className="animate-spin" /> : 'Set Active'}
                 </button>
               )}
-              {!isActive && (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  disabled={isBusy}
-                  className="flex items-center gap-1 rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-red-500/80 hover:text-red-500 disabled:opacity-50"
-                >
-                  <Trash2 size={12} />
-                  Delete
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={isBusy}
+                className="flex items-center gap-1 rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-red-500/80 hover:text-red-500 disabled:opacity-50"
+              >
+                <Trash2 size={12} />
+                Delete
+              </button>
             </>
           ) : (
             <button
