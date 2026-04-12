@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import Unlock from './routes/Unlock'
 import Decisions from './routes/Decisions'
 import NewDecision from './routes/NewDecision'
+import ReviewDecision from './routes/ReviewDecision'
 import Reviews from './routes/Reviews'
 import Analytics from './routes/Analytics'
 import Chat from './routes/Chat'
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/decisions" element={<Decisions />} />
         <Route path="/new" element={<NewDecision />} />
         <Route path="/reviews" element={<Reviews />} />
+        <Route path="/decisions/:id/review" element={<ReviewDecision />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/settings" element={<Settings />} />

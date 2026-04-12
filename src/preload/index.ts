@@ -1,5 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, Decision, ThemeMode, UnlockResult, VaultStatus } from '@shared/ipc-contract'
+import type {
+  Api,
+  Decision,
+  DecisionCreateInput,
+  DecisionReviewInput,
+  DecisionUpdateInput,
+  ThemeMode,
+  UnlockResult,
+  VaultStatus
+} from '@shared/ipc-contract'
 
 const api: Api = {
   vault: {
@@ -16,7 +25,19 @@ const api: Api = {
     unlockWithTouchId: () => ipcRenderer.invoke('vault:unlock-touchid')
   },
   decisions: {
-    list: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list')
+    list: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list'),
+    get: (id: string): Promise<Decision | null> => ipcRenderer.invoke('decisions:get', id),
+    create: (input: DecisionCreateInput): Promise<Decision> =>
+      ipcRenderer.invoke('decisions:create', input),
+    update: (id: string, patch: DecisionUpdateInput): Promise<Decision> =>
+      ipcRenderer.invoke('decisions:update', id, patch),
+    delete: (id: string): Promise<void> => ipcRenderer.invoke('decisions:delete', id),
+    review: (id: string, input: DecisionReviewInput): Promise<Decision> =>
+      ipcRenderer.invoke('decisions:review', id, input),
+    clearReview: (id: string): Promise<Decision> =>
+      ipcRenderer.invoke('decisions:clear-review', id),
+    listReviewable: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list-reviewable'),
+    listUpcoming: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list-upcoming')
   },
   theme: {
     get: (): Promise<ThemeMode> => ipcRenderer.invoke('theme:get'),

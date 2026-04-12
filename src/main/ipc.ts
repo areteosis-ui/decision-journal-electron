@@ -1,11 +1,29 @@
 import { app, ipcMain, nativeTheme } from 'electron'
 import { join } from 'node:path'
 import type Database from 'better-sqlite3-multiple-ciphers'
-import type { ThemeMode, UnlockResult, VaultStatus } from '@shared/ipc-contract'
+import type {
+  DecisionCreateInput,
+  DecisionReviewInput,
+  DecisionUpdateInput,
+  ThemeMode,
+  UnlockResult,
+  VaultStatus
+} from '@shared/ipc-contract'
 import { Vault, isValidPinFormat } from './crypto/vault'
 import { canPromptTouchId, promptTouchId } from './crypto/keychain'
 import { closeDb, openEncryptedDb } from './db/open'
-import { listDecisions, seedIfEmpty } from './db/seed'
+import { seedIfEmpty } from './db/seed'
+import {
+  clearReviewDecision,
+  createDecision,
+  deleteDecision,
+  getDecision,
+  listDecisions,
+  listReviewable,
+  listUpcoming,
+  reviewDecision,
+  updateDecision
+} from './db/decisions'
 import { applyThemeMode, loadThemePreference, saveThemePreference } from './theme'
 
 type DB = Database.Database
@@ -158,10 +176,54 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  // --- Decisions ---
+
   ipcMain.handle('decisions:list', async () => {
     if (!session.db) return []
     return listDecisions(session.db)
   })
+
+  ipcMain.handle('decisions:get', async (_evt, id: string) => {
+    if (!session.db) return null
+    return getDecision(session.db, id)
+  })
+
+  ipcMain.handle('decisions:create', async (_evt, input: DecisionCreateInput) => {
+    if (!session.db) throw new Error('Not unlocked')
+    return createDecision(session.db, input)
+  })
+
+  ipcMain.handle('decisions:update', async (_evt, id: string, patch: DecisionUpdateInput) => {
+    if (!session.db) throw new Error('Not unlocked')
+    return updateDecision(session.db, id, patch)
+  })
+
+  ipcMain.handle('decisions:delete', async (_evt, id: string) => {
+    if (!session.db) throw new Error('Not unlocked')
+    deleteDecision(session.db, id)
+  })
+
+  ipcMain.handle('decisions:review', async (_evt, id: string, input: DecisionReviewInput) => {
+    if (!session.db) throw new Error('Not unlocked')
+    return reviewDecision(session.db, id, input)
+  })
+
+  ipcMain.handle('decisions:clear-review', async (_evt, id: string) => {
+    if (!session.db) throw new Error('Not unlocked')
+    return clearReviewDecision(session.db, id)
+  })
+
+  ipcMain.handle('decisions:list-reviewable', async () => {
+    if (!session.db) return []
+    return listReviewable(session.db)
+  })
+
+  ipcMain.handle('decisions:list-upcoming', async () => {
+    if (!session.db) return []
+    return listUpcoming(session.db)
+  })
+
+  // --- Theme ---
 
   ipcMain.handle('theme:get', async (): Promise<ThemeMode> => loadThemePreference())
 
