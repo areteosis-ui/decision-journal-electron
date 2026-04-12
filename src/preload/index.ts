@@ -3,6 +3,8 @@ import type {
   Api,
   CatalogModel,
   ChatMsg,
+  Conversation,
+  ConversationSummary,
   Decision,
   DecisionCreateInput,
   DecisionUpdateInput,
@@ -52,6 +54,18 @@ const api: Api = {
     update: (id: string, patch: DecisionUpdateInput): Promise<Decision> =>
       ipcRenderer.invoke('decisions:update', id, patch),
     delete: (id: string): Promise<void> => ipcRenderer.invoke('decisions:delete', id)
+  },
+  conversations: {
+    create: (modelId: string, title: string): Promise<Conversation> =>
+      ipcRenderer.invoke('conversations:create', modelId, title),
+    list: (): Promise<ConversationSummary[]> =>
+      ipcRenderer.invoke('conversations:list'),
+    messages: (id: string): Promise<ChatMsg[]> =>
+      ipcRenderer.invoke('conversations:messages', id),
+    appendMessage: (id: string, role: string, content: string): Promise<void> =>
+      ipcRenderer.invoke('conversations:append-message', id, role, content),
+    delete: (id: string): Promise<void> =>
+      ipcRenderer.invoke('conversations:delete', id)
   },
   theme: {
     get: (): Promise<ThemeMode> => ipcRenderer.invoke('theme:get'),

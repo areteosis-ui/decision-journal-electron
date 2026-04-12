@@ -163,6 +163,21 @@ export interface WhisperDownloadProgress {
   total: number
 }
 
+export interface Conversation {
+  id: string
+  title: string
+  modelId: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ConversationSummary {
+  id: string
+  title: string
+  modelId: string
+  updatedAt: number
+}
+
 export interface Api {
   vault: {
     status(): Promise<VaultStatus>
@@ -185,6 +200,13 @@ export interface Api {
     get(id: string): Promise<Decision | null>
     create(input: DecisionCreateInput): Promise<Decision>
     update(id: string, patch: DecisionUpdateInput): Promise<Decision>
+    delete(id: string): Promise<void>
+  }
+  conversations: {
+    create(modelId: string, title: string): Promise<Conversation>
+    list(): Promise<ConversationSummary[]>
+    messages(id: string): Promise<ChatMsg[]>
+    appendMessage(id: string, role: string, content: string): Promise<void>
     delete(id: string): Promise<void>
   }
   theme: {

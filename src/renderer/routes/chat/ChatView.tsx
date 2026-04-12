@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUp, ChevronDown, Square, Eraser, AlertCircle } from 'lucide-react'
 import { useChatStore } from '../../store/chat'
+import MicButton from '../../components/voice/MicButton'
 import Message from './Message'
+import PastChatsDropdown from './PastChatsDropdown'
 
 export default function ChatView() {
   const activeModel = useChatStore((s) => s.activeModel)
@@ -51,6 +53,20 @@ export default function ChatView() {
     await sendMessage(text)
   }
 
+  const handleMicInsert = useCallback(
+    (text: string) => {
+      const el = textareaRef.current
+      if (el && el === document.activeElement) {
+        const start = el.selectionStart ?? input.length
+        const end = el.selectionEnd ?? input.length
+        setInput(input.slice(0, start) + text + input.slice(end))
+      } else {
+        setInput(input ? input + ' ' + text : text)
+      }
+    },
+    [input]
+  )
+
   if (!activeModel) return null
 
   return (
@@ -72,16 +88,19 @@ export default function ChatView() {
             {displaySizeGB ? ` · ${displaySizeGB}` : ''}
           </div>
         </div>
-        {messages.length > 0 && (
-          <button
-            type="button"
-            onClick={clearConversation}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg px-2.5 py-1.5 text-[11.5px] text-text-muted hover:text-text"
-          >
-            <Eraser size={12} strokeWidth={2} />
-            New chat
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <PastChatsDropdown />
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={clearConversation}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg px-2.5 py-1.5 text-[11.5px] text-text-muted hover:text-text"
+            >
+              <Eraser size={12} strokeWidth={2} />
+              New chat
+            </button>
+          )}
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto py-4">
@@ -118,6 +137,7 @@ export default function ChatView() {
             className="max-h-[140px] min-h-[24px] flex-1 resize-none bg-transparent text-[13.5px] leading-relaxed text-text placeholder:text-text-muted focus:outline-none"
             disabled={!!streaming}
           />
+          {!streaming && <MicButton onInsert={handleMicInsert} />}
           {streaming ? (
             <button
               type="button"
