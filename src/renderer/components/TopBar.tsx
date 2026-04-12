@@ -1,3 +1,9 @@
+import { useState } from 'react'
+import { Search, User } from 'lucide-react'
+import AvatarMenu from './AvatarMenu'
+
+export default function TopBar() {
+  const [menuOpen, setMenuOpen] = useState(false)
 import { Search, User, Lock, X } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import { useAuthStore } from '../store/auth'
@@ -38,24 +44,18 @@ export default function TopBar() {
         )}
       </div>
 
-      <div className="no-drag ml-auto flex items-center gap-2">
-        <ThemeToggle />
+      <div className="no-drag relative ml-auto flex items-center gap-2">
         <button
           type="button"
-          onClick={() => lock()}
-          aria-label="Lock"
-          title="Lock"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted transition-colors hover:text-text"
-        >
-          <Lock size={15} strokeWidth={1.75} />
-        </button>
-        <button
-          type="button"
-          aria-label="Profile"
+          aria-label="Profile menu"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
           className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted hover:text-text"
         >
           <User size={16} strokeWidth={1.75} />
         </button>
+        {menuOpen && <AvatarMenu onRequestClose={() => setMenuOpen(false)} />}
       </div>
     </header>
   )
