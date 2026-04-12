@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/sinameraji/decision-journal-electron/compare/v0.3.1...v0.4.0) (2026-04-12)
+
+
+### Features
+
+* add auto-update support via GitHub Releases ([0ef7d32](https://github.com/sinameraji/decision-journal-electron/commit/0ef7d320f73a6477e230d75e1c266c44f96750db))
+* add auto-update support via GitHub Releases ([b866850](https://github.com/sinameraji/decision-journal-electron/commit/b8668508dbe1b855e5fa5339c22da0b0f7e092d4))
+
 ## [0.3.1](https://github.com/sinameraji/decision-journal-electron/compare/v0.3.0...v0.3.1) (2026-04-12)
 
 
