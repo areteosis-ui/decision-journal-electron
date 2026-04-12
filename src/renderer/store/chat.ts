@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   CatalogModel,
   ChatMsg,
+  ConversationSummary,
   InstalledModel,
   OllamaEvent,
   OllamaStatus
@@ -34,6 +35,8 @@ interface ChatState {
   streaming: StreamingState | null
   pulls: Record<string, PullState> // keyed by modelId
   initialized: boolean
+  activeConversationId: string | null
+  conversationList: ConversationSummary[]
 
   init: () => Promise<void>
   refresh: () => Promise<void>
@@ -46,6 +49,9 @@ interface ChatState {
   stopStreaming: () => Promise<void>
   clearConversation: () => void
   reset: () => void
+  loadConversationList: () => Promise<void>
+  loadConversation: (id: string) => Promise<void>
+  deleteConversation: (id: string) => Promise<void>
 }
 
 let eventDisposer: (() => void) | null = null
@@ -110,28 +116,38 @@ function handleChatEvent(evt: OllamaEvent): void {
       }
     })
   } else if (evt.type === 'done') {
+    const state = useChatStore.getState()
+    const finalContent = state.streaming?.partial ?? ''
+    const convId = state.activeConversationId
     useChatStore.setState((s) => {
       if (!s.streaming) return s
-      const finalContent = s.streaming.partial
       const next: ChatMsg[] = finalContent
         ? [...s.messages, { role: 'assistant', content: finalContent }]
         : s.messages
       return { messages: next, streaming: null }
     })
+    if (finalContent && convId) {
+      void window.api.conversations.appendMessage(convId, 'assistant', finalContent)
+    }
   } else if (evt.type === 'error') {
     useChatStore.setState((s) => {
       if (!s.streaming) return s
       return { streaming: { ...s.streaming, error: evt.message } }
     })
   } else if (evt.type === 'cancelled') {
+    const state = useChatStore.getState()
+    const partial = state.streaming?.partial ?? ''
+    const convId = state.activeConversationId
     useChatStore.setState((s) => {
       if (!s.streaming) return s
-      const partial = s.streaming.partial
       const next: ChatMsg[] = partial
         ? [...s.messages, { role: 'assistant', content: partial }]
         : s.messages
       return { messages: next, streaming: null }
     })
+    if (partial && convId) {
+      void window.api.conversations.appendMessage(convId, 'assistant', partial)
+    }
   }
 }
 
@@ -160,6 +176,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streaming: null,
   pulls: {},
   initialized: false,
+  activeConversationId: null,
+  conversationList: [],
 
   init: async () => {
     if (!get().initialized) {
@@ -221,6 +239,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       activeModel: modelId,
       messages: [],
       streaming: null,
+      activeConversationId: null,
       stage: 'chat'
     })
   },
@@ -265,6 +284,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const nextMessages = [...messages, userMsg]
     set({ messages: nextMessages })
 
+    // Persist: create conversation if needed, then save user message
+    let convId = get().activeConversationId
+    try {
+      if (!convId) {
+        const title = trimmed.length > 60 ? trimmed.slice(0, 57) + '...' : trimmed
+        const conv = await window.api.conversations.create(activeModel, title)
+        convId = conv.id
+        set({ activeConversationId: convId })
+      }
+      await window.api.conversations.appendMessage(convId, 'user', trimmed)
+    } catch {
+      // persistence failure shouldn't block chat
+    }
+
     try {
       const requestId = await window.api.ollama.chat(activeModel, nextMessages)
       set({
@@ -283,7 +316,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearConversation: () => {
-    set({ messages: [], streaming: null })
+    set({ messages: [], streaming: null, activeConversationId: null })
+    void get().loadConversationList()
   },
 
   reset: () => {
@@ -298,7 +332,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [],
       streaming: null,
       pulls: {},
-      initialized: false
+      initialized: false,
+      activeConversationId: null,
+      conversationList: []
     })
+  },
+
+  loadConversationList: async () => {
+    try {
+      const list = await window.api.conversations.list()
+      set({ conversationList: list })
+    } catch {
+      // ignore
+    }
+  },
+
+  loadConversation: async (id) => {
+    try {
+      const messages = await window.api.conversations.messages(id)
+      set({ messages, activeConversationId: id, streaming: null })
+    } catch {
+      // ignore
+    }
+  },
+
+  deleteConversation: async (id) => {
+    try {
+      await window.api.conversations.delete(id)
+      const { activeConversationId } = get()
+      if (activeConversationId === id) {
+        set({ messages: [], streaming: null, activeConversationId: null })
+      }
+      await get().loadConversationList()
+    } catch {
+      // ignore
+    }
   }
 }))

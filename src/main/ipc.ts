@@ -36,6 +36,13 @@ import {
   updateDecision
 } from './db/decisions'
 import {
+  appendMessage,
+  createConversation,
+  deleteConversation,
+  getConversationMessages,
+  listConversations
+} from './db/conversations'
+import {
   chatStream,
   deleteModel as deleteOllamaModel,
   getVersion,
@@ -317,6 +324,36 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('decisions:delete', async (_evt, id: string) => {
     if (!session.db) throw new Error('Database is locked')
     deleteDecision(session.db, id)
+  })
+
+  // ---------------- Conversations ----------------
+
+  ipcMain.handle('conversations:create', async (_evt, modelId: string, title: string) => {
+    if (!session.db) throw new Error('Database is locked')
+    return createConversation(session.db, modelId, title)
+  })
+
+  ipcMain.handle('conversations:list', async () => {
+    if (!session.db) return []
+    return listConversations(session.db)
+  })
+
+  ipcMain.handle('conversations:messages', async (_evt, id: string) => {
+    if (!session.db) return []
+    return getConversationMessages(session.db, id)
+  })
+
+  ipcMain.handle(
+    'conversations:append-message',
+    async (_evt, id: string, role: string, content: string) => {
+      if (!session.db) throw new Error('Database is locked')
+      appendMessage(session.db, id, role, content)
+    }
+  )
+
+  ipcMain.handle('conversations:delete', async (_evt, id: string) => {
+    if (!session.db) throw new Error('Database is locked')
+    deleteConversation(session.db, id)
   })
 
   ipcMain.handle('theme:get', async (): Promise<ThemeMode> => loadThemePreference())

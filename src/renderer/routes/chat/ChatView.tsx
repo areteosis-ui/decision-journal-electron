@@ -3,6 +3,7 @@ import { ArrowUp, ChevronDown, Square, Eraser, AlertCircle } from 'lucide-react'
 import { useChatStore } from '../../store/chat'
 import MicButton from '../../components/voice/MicButton'
 import Message from './Message'
+import PastChatsDropdown from './PastChatsDropdown'
 
 export default function ChatView() {
   const activeModel = useChatStore((s) => s.activeModel)
@@ -87,16 +88,19 @@ export default function ChatView() {
             {displaySizeGB ? ` · ${displaySizeGB}` : ''}
           </div>
         </div>
-        {messages.length > 0 && (
-          <button
-            type="button"
-            onClick={clearConversation}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg px-2.5 py-1.5 text-[11.5px] text-text-muted hover:text-text"
-          >
-            <Eraser size={12} strokeWidth={2} />
-            New chat
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <PastChatsDropdown />
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={clearConversation}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg px-2.5 py-1.5 text-[11.5px] text-text-muted hover:text-text"
+            >
+              <Eraser size={12} strokeWidth={2} />
+              New chat
+            </button>
+          )}
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto py-4">
