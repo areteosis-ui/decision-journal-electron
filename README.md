@@ -11,6 +11,8 @@
 
 A private, offline journal for the decisions you make — and the ones you want to get better at.
 
+https://github.com/user-attachments/assets/c53bd66f-695c-4a67-baa2-c5823bbfd1a7
+
 Inspired by [Farnam Street's decision journal practice](https://fs.blog/decision-journal/): write down a decision as you're making it, come back to it months later, log how it actually played out, and slowly build a real picture of your own judgment over time.
 
 Built for macOS by [Sina Meraji](https://github.com/sinameraji).
