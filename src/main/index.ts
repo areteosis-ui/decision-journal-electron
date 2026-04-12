@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell, session } from 'electron'
 import { join } from 'node:path'
 import { clearSessionOnQuit, registerIpcHandlers } from './ipc'
 import { applyThemeMode, loadThemePreference, wireNativeThemeBroadcast } from './theme'
+import { isUrlAllowedByGate } from './whisper/download-gate'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -20,6 +21,7 @@ function installNetworkKillSwitch(): void {
       if (url.startsWith('http://localhost') || url.startsWith('ws://localhost')) return true
       if (url.startsWith('http://127.0.0.1') || url.startsWith('ws://127.0.0.1')) return true
     }
+    if (isUrlAllowedByGate(url)) return true
     return false
   }
 
@@ -32,7 +34,13 @@ function installNetworkKillSwitch(): void {
     }
   })
 
-  ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
+  ses.setPermissionRequestHandler((_wc, permission, callback) => {
+    if (permission === 'media') {
+      callback(true)
+      return
+    }
+    callback(false)
+  })
 }
 
 function installCsp(): void {
