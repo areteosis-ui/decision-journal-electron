@@ -1,15 +1,12 @@
 import { useState } from 'react'
-import { Search, User } from 'lucide-react'
-import AvatarMenu from './AvatarMenu'
-
-export default function TopBar() {
-  const [menuOpen, setMenuOpen] = useState(false)
 import { Search, User, Lock, X } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
+import AvatarMenu from './AvatarMenu'
 import { useAuthStore } from '../store/auth'
 import { useDecisionsStore } from '../store/decisions'
 
 export default function TopBar() {
+  const [menuOpen, setMenuOpen] = useState(false)
   const lock = useAuthStore((s) => s.lock)
   const query = useDecisionsStore((s) => s.query)
   const setQuery = useDecisionsStore((s) => s.setQuery)
