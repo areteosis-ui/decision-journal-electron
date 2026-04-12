@@ -186,7 +186,7 @@ export default function RecorderPopover({
           {phase === 'recording' && (
             <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border">
               <div
-                className="h-full rounded-full bg-red-500 transition-all duration-75"
+                className="h-full rounded-full bg-green-500 transition-all duration-75"
                 style={{ width: `${Math.max(5, vuLevel * 100)}%` }}
               />
             </div>

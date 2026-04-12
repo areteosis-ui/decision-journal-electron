@@ -26,6 +26,7 @@ export default function Settings() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [modelBusy, setModelBusy] = useState<string | null>(null)
+  const [justDeleted, setJustDeleted] = useState<string | null>(null)
 
   useEffect(() => {
     window.api.app.version().then(setVersion)
@@ -57,6 +58,8 @@ export default function Settings() {
     await window.api.transcription.deleteModel(name)
     await refreshTranscription()
     setModelBusy(null)
+    setJustDeleted(name)
+    setTimeout(() => setJustDeleted(null), 1500)
   }
 
   async function handleSetActiveModel(name: string) {
@@ -170,6 +173,7 @@ export default function Settings() {
               isInstalled={installedModels.includes(m.name)}
               isActive={activeModel === m.name}
               isBusy={modelBusy === m.name}
+              justDeleted={justDeleted === m.name}
               downloadProgress={
                 downloadProgress && modelBusy === m.name ? downloadProgress : null
               }
@@ -305,6 +309,7 @@ function ModelRow({
   isInstalled,
   isActive,
   isBusy,
+  justDeleted,
   downloadProgress,
   lowRamWarning,
   onDownload,
@@ -316,6 +321,7 @@ function ModelRow({
   isInstalled: boolean
   isActive: boolean
   isBusy: boolean
+  justDeleted: boolean
   downloadProgress: { loaded: number; total: number } | null
   lowRamWarning: boolean
   onDownload: () => void
@@ -358,7 +364,12 @@ function ModelRow({
         </div>
 
         <div className="ml-4 flex shrink-0 items-center gap-2">
-          {isDownloading ? (
+          {justDeleted ? (
+            <span className="flex items-center gap-1 text-[12px] text-green-600 dark:text-green-400">
+              <CheckCircle2 size={13} />
+              Deleted
+            </span>
+          ) : isDownloading ? (
             <button
               type="button"
               onClick={onCancelDownload}
