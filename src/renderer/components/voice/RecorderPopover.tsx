@@ -59,7 +59,7 @@ export default function RecorderPopover({
         const v = (buf[i] - 128) / 128
         sum += v * v
       }
-      setVuLevel(Math.min(1, Math.sqrt(sum / buf.length) * 3))
+      setVuLevel(Math.min(1, Math.sqrt(sum / buf.length) * 8))
       animFrameRef.current = requestAnimationFrame(tick)
     }
     tick()
@@ -67,7 +67,9 @@ export default function RecorderPopover({
 
   const startRecording = useCallback(async () => {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const s = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
+      })
       stream.current = s
 
       const ctx = new AudioContext()
@@ -94,7 +96,11 @@ export default function RecorderPopover({
         try {
           const blob = new Blob(chunks.current, { type: recorder.mimeType })
           const samples = await decodeToFloat32(blob)
-          const text = await window.api.transcription.transcribe(samples.buffer as ArrayBuffer)
+          const buffer = samples.buffer.slice(
+            samples.byteOffset,
+            samples.byteOffset + samples.byteLength
+          )
+          const text = await window.api.transcription.transcribe(buffer)
           onTranscribed(text)
           onClose()
         } catch (err) {
@@ -103,7 +109,7 @@ export default function RecorderPopover({
         }
       }
 
-      recorder.start(250)
+      recorder.start()
       setElapsed(0)
       startTimer()
       startVuMeter(analyser)
@@ -180,7 +186,7 @@ export default function RecorderPopover({
           {phase === 'recording' && (
             <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border">
               <div
-                className="h-full rounded-full bg-red-500 transition-all duration-75"
+                className="h-full rounded-full bg-green-500 transition-all duration-75"
                 style={{ width: `${Math.max(5, vuLevel * 100)}%` }}
               />
             </div>
@@ -279,15 +285,21 @@ function IconBtn({
 
 async function decodeToFloat32(blob: Blob): Promise<Float32Array> {
   const arrayBuffer = await blob.arrayBuffer()
-  const audioCtx = new OfflineAudioContext(1, 1, 16000)
-  const decoded = await audioCtx.decodeAudioData(arrayBuffer)
 
-  const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * 16000), 16000)
+  // Decode audio using a standard AudioContext (avoids 1-frame OfflineAudioContext quirks)
+  const tempCtx = new AudioContext({ sampleRate: 16000 })
+  const decoded = await tempCtx.decodeAudioData(arrayBuffer)
+  await tempCtx.close()
+
+  // Resample to 16 kHz mono
+  const numSamples = Math.ceil(decoded.duration * 16000)
+  const offlineCtx = new OfflineAudioContext(1, numSamples, 16000)
   const source = offlineCtx.createBufferSource()
   source.buffer = decoded
   source.connect(offlineCtx.destination)
   source.start()
 
   const rendered = await offlineCtx.startRendering()
-  return rendered.getChannelData(0)
+  // Copy data to a clean Float32Array (avoids shared-buffer issues across IPC)
+  return new Float32Array(rendered.getChannelData(0))
 }
