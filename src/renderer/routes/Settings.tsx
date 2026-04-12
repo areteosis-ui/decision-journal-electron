@@ -280,27 +280,29 @@ function Toggle({
   onChange: (next: boolean) => void
 }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
+    <label
       className={[
-        'relative h-6 w-10 rounded-full border transition-colors',
+        'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors',
         checked
           ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))]'
-          : 'border-border bg-bg',
+          : 'border-border bg-border/50',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
       ].join(' ')}
     >
+      <input
+        type="checkbox"
+        className="peer sr-only"
+        checked={checked}
+        disabled={disabled}
+        onChange={() => onChange(!checked)}
+      />
       <span
         className={[
-          'absolute top-[2px] h-[18px] w-[18px] rounded-full transition-transform',
-          checked ? 'translate-x-[18px] bg-accent-text' : 'translate-x-[2px] bg-text'
+          'pointer-events-none absolute left-[2px] h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform',
+          checked ? 'translate-x-[16px]' : 'translate-x-0'
         ].join(' ')}
       />
-    </button>
+    </label>
   )
 }
 
