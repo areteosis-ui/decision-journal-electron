@@ -105,6 +105,10 @@ export type ImportResult =
   | { ok: true }
   | { ok: false; error: 'wrong-pin' | 'invalid-folder' | 'db-exists' | 'internal' }
 
+export type ReplaceFromBackupResult =
+  | { ok: true }
+  | { ok: false; error: 'wrong-pin' | 'invalid-folder' | 'not-unlocked' | 'internal' }
+
 export interface Decision {
   id: string
   title: string
@@ -193,6 +197,7 @@ export interface Api {
     export(): Promise<ExportResult>
     pickImportFolder(): Promise<string | null>
     import(folder: string, pin: string): Promise<ImportResult>
+    replaceFromBackup(folder: string, pin: string): Promise<ReplaceFromBackupResult>
   }
   decisions: {
     list(): Promise<Decision[]>

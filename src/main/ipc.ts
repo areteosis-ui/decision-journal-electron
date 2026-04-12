@@ -12,6 +12,7 @@ import type {
   DecisionUpdateInput,
   ExportResult,
   ImportResult,
+  ReplaceFromBackupResult,
   InstalledModel,
   ModelInfo,
   OllamaEvent,
@@ -474,6 +475,79 @@ export function registerIpcHandlers(): void {
         } catch {
           // best-effort cleanup
         }
+        return { ok: false, error: 'internal' }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'vault:replace-from-backup',
+    async (_evt, folder: string, pin: string): Promise<ReplaceFromBackupResult> => {
+      if (!session.db) return { ok: false, error: 'not-unlocked' }
+      if (typeof folder !== 'string' || !folder) return { ok: false, error: 'invalid-folder' }
+      if (!isValidPinFormat(pin)) return { ok: false, error: 'wrong-pin' }
+
+      const srcVault = join(folder, 'vault.json')
+      const srcDb = join(folder, 'decisions.db')
+      try {
+        await fs.access(srcVault)
+        await fs.access(srcDb)
+      } catch {
+        return { ok: false, error: 'invalid-folder' }
+      }
+
+      // Verify backup PIN before destroying anything
+      const portableJson = await fs.readFile(srcVault, 'utf8')
+      const verifyPath = vaultPath() + '.verify'
+      try {
+        const tempVault = new Vault(verifyPath)
+        await tempVault.writePortable(portableJson)
+        const verifyResult = await tempVault.unlock(pin)
+        await fs.rm(verifyPath, { force: true })
+        if (!verifyResult.ok) return { ok: false, error: 'wrong-pin' }
+        verifyResult.masterKey.fill(0)
+      } catch {
+        await fs.rm(verifyPath, { force: true })
+        return { ok: false, error: 'wrong-pin' }
+      }
+
+      // Tear down current session
+      for (const controller of activeRequests.values()) controller.abort()
+      activeRequests.clear()
+      closeDb(session.db)
+      zeroBuffer(session.masterKey)
+      session.db = null
+      session.masterKey = null
+
+      // Move current files aside as safety net
+      try { await fs.rename(vaultPath(), vaultPath() + '.replaced') } catch { /* may not exist */ }
+      try { await fs.rename(dbPath(), dbPath() + '.replaced') } catch { /* may not exist */ }
+      try { await fs.rm(dbPath() + '-wal', { force: true }) } catch { /* ignore */ }
+      try { await fs.rm(dbPath() + '-shm', { force: true }) } catch { /* ignore */ }
+
+      try {
+        const vault = getVault()
+        await vault.writePortable(portableJson)
+        const unlockResult = await vault.unlock(pin)
+        if (!unlockResult.ok) throw new Error('unlock failed after verification')
+        await fs.copyFile(srcDb, dbPath())
+        await vault.sealLocally()
+        await hydrateDb(unlockResult.masterKey)
+
+        // Success — clean up old files
+        await fs.rm(vaultPath() + '.replaced', { force: true })
+        await fs.rm(dbPath() + '.replaced', { force: true })
+
+        return { ok: true }
+      } catch (err) {
+        console.error('[vault:replace-from-backup]', err)
+        // Attempt rollback
+        try {
+          await fs.rm(vaultPath(), { force: true })
+          await fs.rm(dbPath(), { force: true })
+          await fs.rename(vaultPath() + '.replaced', vaultPath()).catch(() => {})
+          await fs.rename(dbPath() + '.replaced', dbPath()).catch(() => {})
+        } catch { /* best-effort */ }
         return { ok: false, error: 'internal' }
       }
     }

@@ -10,6 +10,7 @@ import type {
   DecisionUpdateInput,
   ExportResult,
   ImportResult,
+  ReplaceFromBackupResult,
   InstalledModel,
   ModelInfo,
   OllamaEvent,
@@ -42,7 +43,9 @@ const api: Api = {
     pickImportFolder: (): Promise<string | null> =>
       ipcRenderer.invoke('vault:pick-import-folder'),
     import: (folder: string, pin: string): Promise<ImportResult> =>
-      ipcRenderer.invoke('vault:import', folder, pin)
+      ipcRenderer.invoke('vault:import', folder, pin),
+    replaceFromBackup: (folder: string, pin: string): Promise<ReplaceFromBackupResult> =>
+      ipcRenderer.invoke('vault:replace-from-backup', folder, pin)
   },
   decisions: {
     list: (): Promise<Decision[]> => ipcRenderer.invoke('decisions:list'),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Fingerprint, Lock, Mic, Download, Trash2, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Fingerprint, Lock, Mic, Download, Trash2, Loader2, CheckCircle2, AlertTriangle, HardDriveDownload } from 'lucide-react'
 import PinPad from '../components/PinPad'
 import { useAuthStore } from '../store/auth'
 import { useTranscriptionStore } from '../store/transcription'
@@ -21,10 +21,11 @@ export default function Settings() {
   } = useTranscriptionStore()
 
   const [version, setVersion] = useState<string>('')
-  const [pinModal, setPinModal] = useState<'enable-touchid' | null>(null)
+  const [pinModal, setPinModal] = useState<'enable-touchid' | 'restore-confirm' | 'restore-pin' | null>(null)
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [restoreFolder, setRestoreFolder] = useState<string | null>(null)
   const [modelBusy, setModelBusy] = useState<string | null>(null)
   const [justDeleted, setJustDeleted] = useState<string | null>(null)
 
@@ -104,10 +105,45 @@ export default function Settings() {
     }
   }
 
+  async function handleStartRestore() {
+    if (busy) return
+    setError(null)
+    const folder = await window.api.vault.pickImportFolder()
+    if (!folder) return
+    setRestoreFolder(folder)
+    setPinModal('restore-confirm')
+  }
+
+  function handleRestoreConfirm() {
+    setPin('')
+    setError(null)
+    setPinModal('restore-pin')
+  }
+
+  async function handleRestoreSubmit() {
+    if (busy || pin.length !== 6 || !restoreFolder) return
+    setBusy(true)
+    setError(null)
+    const res = await window.api.vault.replaceFromBackup(restoreFolder, pin)
+    setBusy(false)
+    if (res.ok) {
+      setPinModal(null)
+      setPin('')
+      setRestoreFolder(null)
+      await lock()
+    } else {
+      setPin('')
+      if (res.error === 'wrong-pin') setError('Incorrect PIN for this backup')
+      else if (res.error === 'invalid-folder') setError('Not a valid Decision Journal backup')
+      else setError('Restore failed. Your current vault has been preserved.')
+    }
+  }
+
   function cancelPinModal() {
     setPinModal(null)
     setPin('')
     setError(null)
+    setRestoreFolder(null)
   }
 
   return (
@@ -152,6 +188,21 @@ export default function Settings() {
                 className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text hover:bg-nav-active"
               >
                 Lock
+              </button>
+            }
+          />
+          <Row
+            icon={<HardDriveDownload size={16} strokeWidth={1.75} />}
+            title="Restore from backup"
+            subtitle="Replace your vault and all decisions with a previous backup."
+            right={
+              <button
+                type="button"
+                onClick={handleStartRestore}
+                disabled={busy}
+                className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text hover:bg-nav-active disabled:opacity-50"
+              >
+                Restore…
               </button>
             }
           />
@@ -236,6 +287,76 @@ export default function Settings() {
                 className="rounded-md border border-[rgb(var(--accent))] bg-[rgb(var(--accent))] px-3 py-1.5 text-[12.5px] text-accent-text hover:opacity-90 disabled:opacity-50 dark:bg-transparent dark:border-border dark:text-text"
               >
                 Enable
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pinModal === 'restore-confirm' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="w-[380px] rounded-2xl border border-border bg-bg-elevated p-6 shadow-xl">
+            <h3 className="font-serif text-[20px] font-medium text-text">Replace your vault?</h3>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">
+              This will permanently replace all your current decisions and data with the
+              contents of the selected backup. This action cannot be undone.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={cancelPinModal}
+                className="rounded-md px-3 py-1.5 text-[12.5px] text-text-muted hover:text-text"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreConfirm}
+                className="rounded-md border border-red-500/60 bg-red-500/10 px-3 py-1.5 text-[12.5px] font-medium text-red-500 hover:bg-red-500/20"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pinModal === 'restore-pin' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="w-[360px] rounded-2xl border border-border bg-bg-elevated p-6 shadow-xl">
+            <h3 className="font-serif text-[20px] font-medium text-text">Enter backup PIN</h3>
+            <p className="mt-1 text-[12.5px] text-text-muted">
+              Enter the PIN that was used when this backup was created.
+            </p>
+            <div className="mt-5">
+              <PinPad
+                value={pin}
+                onChange={(v) => {
+                  setError(null)
+                  setPin(v)
+                }}
+                onSubmit={handleRestoreSubmit}
+                disabled={busy}
+              />
+            </div>
+            <div className="mt-3 h-5 text-center text-[12px] text-red-500/90">
+              {error ?? '\u00a0'}
+            </div>
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={cancelPinModal}
+                className="rounded-md px-3 py-1.5 text-[12.5px] text-text-muted hover:text-text"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreSubmit}
+                disabled={busy || pin.length !== 6}
+                className="rounded-md border border-[rgb(var(--accent))] bg-[rgb(var(--accent))] px-3 py-1.5 text-[12.5px] text-accent-text hover:opacity-90 disabled:opacity-50 dark:bg-transparent dark:border-border dark:text-text"
+              >
+                {busy ? 'Restoring…' : 'Restore'}
               </button>
             </div>
           </div>
