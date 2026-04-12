@@ -9,6 +9,7 @@ import type {
   CatalogModel,
   ChatMsg,
   DecisionCreateInput,
+  DecisionReviewInput,
   DecisionUpdateInput,
   ExportResult,
   ImportResult,
@@ -32,6 +33,7 @@ import {
   deleteDecision,
   getDecision,
   listDecisions,
+  reviewDecision,
   searchDecisions,
   updateDecision
 } from './db/decisions'
@@ -318,6 +320,14 @@ export function registerIpcHandlers(): void {
     async (_evt, id: string, patch: DecisionUpdateInput) => {
       if (!session.db) throw new Error('Database is locked')
       return updateDecision(session.db, id, patch)
+    }
+  )
+
+  ipcMain.handle(
+    'decisions:review',
+    async (_evt, id: string, input: DecisionReviewInput) => {
+      if (!session.db) throw new Error('Database is locked')
+      return reviewDecision(session.db, id, input)
     }
   )
 

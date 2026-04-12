@@ -7,6 +7,7 @@ import type {
   ConversationSummary,
   Decision,
   DecisionCreateInput,
+  DecisionReviewInput,
   DecisionUpdateInput,
   ExportResult,
   ImportResult,
@@ -53,6 +54,8 @@ const api: Api = {
       ipcRenderer.invoke('decisions:create', input),
     update: (id: string, patch: DecisionUpdateInput): Promise<Decision> =>
       ipcRenderer.invoke('decisions:update', id, patch),
+    review: (id: string, input: DecisionReviewInput): Promise<Decision> =>
+      ipcRenderer.invoke('decisions:review', id, input),
     delete: (id: string): Promise<void> => ipcRenderer.invoke('decisions:delete', id)
   },
   conversations: {

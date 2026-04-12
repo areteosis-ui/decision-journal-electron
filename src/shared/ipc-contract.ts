@@ -143,6 +143,8 @@ export type DecisionCreateInput = Pick<
 
 export type DecisionUpdateInput = Partial<DecisionCreateInput>
 
+export type DecisionReviewInput = Pick<Decision, 'outcome' | 'lessonsLearned'>
+
 export interface WhisperModelInfo {
   name: string
   label: string
@@ -200,6 +202,7 @@ export interface Api {
     get(id: string): Promise<Decision | null>
     create(input: DecisionCreateInput): Promise<Decision>
     update(id: string, patch: DecisionUpdateInput): Promise<Decision>
+    review(id: string, input: DecisionReviewInput): Promise<Decision>
     delete(id: string): Promise<void>
   }
   conversations: {
