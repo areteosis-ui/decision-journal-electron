@@ -7,7 +7,7 @@
 [![Offline Only](https://img.shields.io/badge/network-offline%20only-green)]()
 [![Encrypted](https://img.shields.io/badge/encryption-AES--256%20%2B%20Argon2id-purple)]()
 
-[**Download for Mac**](https://github.com/sinameraji/decision-journal-electron/releases/latest/download/Decision.Journal-0.2.0-universal.dmg)
+[**Download for Mac**](https://github.com/sinameraji/decision-journal-electron/releases/latest)
 
 A private, offline journal for the decisions you make — and the ones you want to get better at.
 
