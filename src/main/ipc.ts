@@ -59,6 +59,10 @@ import { buildCoachSystemPrompt } from './ollama/systemPrompt'
 import { applyThemeMode, loadThemePreference, saveThemePreference } from './theme'
 import { checkForUpdates, downloadUpdate, installUpdate } from './updater'
 import { loadUpdatePrefs, saveUpdatePrefs } from './updatePrefs'
+import { createLens, deleteLens, listLensesForDecision } from './db/lenses'
+import { buildLensMessages } from './ollama/lensPrompts'
+import type { LensEvent, LensKind, LensRecord } from '@shared/ipc-contract'
+import { LENS_KINDS } from '@shared/ipc-contract'
 import { MODEL_CATALOG, listInstalled, isInstalled, modelPath } from './whisper/models'
 import { getActiveModel, setActiveModel } from './whisper/config'
 import { downloadModel, cancelDownload } from './whisper/download'
@@ -115,6 +119,14 @@ function sendOllamaEvent(evt: OllamaEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) {
       win.webContents.send('ollama:event', evt)
+    }
+  }
+}
+
+function sendLensEvent(evt: LensEvent): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('lenses:event', evt)
     }
   }
 }
@@ -768,6 +780,92 @@ export function registerIpcHandlers(): void {
       return requestId
     }
   )
+
+  ipcMain.handle(
+    'lenses:list',
+    async (_evt, decisionId: string): Promise<LensRecord[]> => {
+      if (!session.db) return []
+      return listLensesForDecision(session.db, decisionId)
+    }
+  )
+
+  ipcMain.handle(
+    'lenses:run',
+    async (_evt, decisionId: string, kind: LensKind, modelId: string): Promise<string> => {
+      if (!session.db) throw new Error('vault-locked')
+      if (!LENS_KINDS.includes(kind)) throw new Error('invalid-lens-kind')
+      if (typeof modelId !== 'string' || modelId === '') throw new Error('missing-model')
+
+      const decision = getDecision(session.db, decisionId)
+      if (!decision) throw new Error('decision-not-found')
+
+      const requestId = randomUUID()
+      const controller = new AbortController()
+      activeRequests.set(requestId, controller)
+
+      const messages = buildLensMessages(decision, kind)
+      let buffer = ''
+
+      void (async () => {
+        try {
+          for await (const chunk of chatStream(modelId, messages, controller.signal)) {
+            if (chunk.error) {
+              sendLensEvent({ requestId, type: 'error', message: chunk.error })
+              return
+            }
+            const token = chunk.message?.content ?? ''
+            if (token) {
+              buffer += token
+              sendLensEvent({ requestId, type: 'token', token })
+            }
+            if (chunk.done) break
+          }
+
+          const finalContent = buffer.trim()
+          if (finalContent === '') {
+            sendLensEvent({
+              requestId,
+              type: 'error',
+              message: 'Model returned an empty response'
+            })
+            return
+          }
+
+          if (!session.db) {
+            sendLensEvent({ requestId, type: 'error', message: 'vault-locked' })
+            return
+          }
+          const lens = createLens(session.db, {
+            decisionId,
+            kind,
+            content: finalContent,
+            modelId
+          })
+          sendLensEvent({ requestId, type: 'done', lens })
+        } catch (err) {
+          if (controller.signal.aborted) {
+            sendLensEvent({ requestId, type: 'cancelled' })
+          } else {
+            sendLensEvent({ requestId, type: 'error', message: errorMessage(err) })
+          }
+        } finally {
+          activeRequests.delete(requestId)
+        }
+      })()
+
+      return requestId
+    }
+  )
+
+  ipcMain.handle('lenses:cancel', async (_evt, requestId: string): Promise<void> => {
+    const controller = activeRequests.get(requestId)
+    if (controller) controller.abort()
+  })
+
+  ipcMain.handle('lenses:delete', async (_evt, id: string): Promise<void> => {
+    if (!session.db) return
+    deleteLens(session.db, id)
+  })
 
   ipcMain.handle('app:check-for-updates', async (): Promise<void> => {
     await checkForUpdates()
