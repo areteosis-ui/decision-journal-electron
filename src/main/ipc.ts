@@ -59,6 +59,13 @@ import { buildCoachSystemPrompt } from './ollama/systemPrompt'
 import { applyThemeMode, loadThemePreference, saveThemePreference } from './theme'
 import { checkForUpdates, downloadUpdate, installUpdate } from './updater'
 import { loadUpdatePrefs, saveUpdatePrefs } from './updatePrefs'
+import {
+  getSyncStatus,
+  setSyncPrefs,
+  scheduleExport,
+  runExport,
+  runMerge
+} from './sync/manager'
 import { MODEL_CATALOG, listInstalled, isInstalled, modelPath } from './whisper/models'
 import { getActiveModel, setActiveModel } from './whisper/config'
 import { downloadModel, cancelDownload } from './whisper/download'
@@ -143,6 +150,16 @@ function zeroBuffer(buf: Buffer | null): void {
 async function hydrateDb(masterKey: Buffer): Promise<void> {
   session.db = await openEncryptedDb(dbPath(), masterKey)
   session.masterKey = masterKey
+  // Background merge from Syncthing folder after every unlock
+  runMerge(session.db, masterKey).catch((err) => {
+    console.warn('[sync] background merge failed', err)
+  })
+}
+
+function triggerExport(): void {
+  if (session.db && session.masterKey) {
+    scheduleExport(session.db, session.masterKey, vaultPath())
+  }
 }
 
 export function registerIpcHandlers(): void {
@@ -313,14 +330,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('decisions:create', async (_evt, input: DecisionCreateInput) => {
     if (!session.db) throw new Error('Database is locked')
-    return createDecision(session.db, input)
+    const result = createDecision(session.db, input)
+    triggerExport()
+    return result
   })
 
   ipcMain.handle(
     'decisions:update',
     async (_evt, id: string, patch: DecisionUpdateInput) => {
       if (!session.db) throw new Error('Database is locked')
-      return updateDecision(session.db, id, patch)
+      const result = updateDecision(session.db, id, patch)
+      triggerExport()
+      return result
     }
   )
 
@@ -328,13 +349,16 @@ export function registerIpcHandlers(): void {
     'decisions:review',
     async (_evt, id: string, input: DecisionReviewInput) => {
       if (!session.db) throw new Error('Database is locked')
-      return reviewDecision(session.db, id, input)
+      const result = reviewDecision(session.db, id, input)
+      triggerExport()
+      return result
     }
   )
 
   ipcMain.handle('decisions:delete', async (_evt, id: string) => {
     if (!session.db) throw new Error('Database is locked')
-    return deleteDecision(session.db, id)
+    deleteDecision(session.db, id)
+    triggerExport()
   })
 
   // ---------------- Conversations ----------------
@@ -562,6 +586,50 @@ export function registerIpcHandlers(): void {
       }
     }
   )
+
+  // ---------------- Sync ----------------
+
+  ipcMain.handle('sync:get-status', async () => {
+    return getSyncStatus()
+  })
+
+  ipcMain.handle('sync:set-enabled', async (_evt, enabled: boolean) => {
+    await setSyncPrefs({ enabled })
+  })
+
+  ipcMain.handle('sync:set-dir', async (_evt, dir: string) => {
+    if (typeof dir !== 'string' || !dir.trim()) return
+    await setSyncPrefs({ syncDir: dir.trim() })
+  })
+
+  ipcMain.handle('sync:export-now', async () => {
+    if (!session.db || !session.masterKey) return { ok: false, error: 'not-unlocked' }
+    return runExport(session.db, session.masterKey, vaultPath())
+  })
+
+  ipcMain.handle('sync:merge-now', async () => {
+    if (!session.db || !session.masterKey) {
+      return { ok: false, inserted: 0, updated: 0, error: 'not-unlocked' }
+    }
+    return runMerge(session.db, session.masterKey)
+  })
+
+  ipcMain.handle('sync:pick-dir', async (evt) => {
+    const win = BrowserWindow.fromWebContents(evt.sender)
+    const picked = win
+      ? await dialog.showOpenDialog(win, {
+          title: 'Choose Syncthing sync folder',
+          properties: ['openDirectory', 'createDirectory']
+        })
+      : await dialog.showOpenDialog({
+          title: 'Choose Syncthing sync folder',
+          properties: ['openDirectory', 'createDirectory']
+        })
+    if (picked.canceled || picked.filePaths.length === 0) return null
+    return picked.filePaths[0]
+  })
+
+  // ---------------- Transcription ----------------
 
   ipcMain.handle('transcription:status', async (): Promise<WhisperStatus> => ({
     activeModel: getActiveModel(),

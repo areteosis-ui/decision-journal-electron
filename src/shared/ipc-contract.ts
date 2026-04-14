@@ -193,6 +193,30 @@ export type UpdateStatus =
   | { state: 'downloaded'; version: string }
   | { state: 'error'; message: string }
 
+// ─── Sync ────────────────────────────────────────────────────────────────────
+
+export interface SyncStatus {
+  enabled: boolean
+  syncDir: string
+  deviceId: string
+  lastExportAt: number
+  lastMergeAt: number
+  syncDirExists: boolean
+}
+
+export interface SyncMergeResult {
+  ok: boolean
+  inserted: number
+  updated: number
+  error?: string
+}
+
+export type SyncEvent =
+  | { type: 'exported'; exportedAt: number }
+  | { type: 'merged'; inserted: number; updated: number; mergedAt: number }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface Api {
   vault: {
     status(): Promise<VaultStatus>
@@ -264,6 +288,15 @@ export interface Api {
     chat(modelId: string, messages: ChatMsg[]): Promise<string>
     onEvent(cb: (evt: OllamaEvent) => void): () => void
     openExternal(url: string): Promise<void>
+  }
+  sync: {
+    getStatus(): Promise<SyncStatus>
+    setEnabled(enabled: boolean): Promise<void>
+    setSyncDir(dir: string): Promise<void>
+    exportNow(): Promise<{ ok: boolean; error?: string }>
+    mergeNow(): Promise<SyncMergeResult>
+    pickSyncDir(): Promise<string | null>
+    onEvent(cb: (evt: SyncEvent) => void): () => void
   }
 }
 

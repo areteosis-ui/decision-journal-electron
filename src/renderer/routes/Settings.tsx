@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Fingerprint, Lock, Mic, Download, Trash2, Loader2, CheckCircle2, AlertTriangle, HardDriveDownload, Heart, RefreshCw } from 'lucide-react'
+import { Fingerprint, Lock, Mic, Download, Trash2, Loader2, CheckCircle2, AlertTriangle, HardDriveDownload, Heart, RefreshCw, RefreshCwOff, FolderOpen, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react'
+import type { SyncStatus, SyncEvent } from '@shared/ipc-contract'
 import PinPad from '../components/PinPad'
 import SupportModal from '../components/SupportModal'
 import { useAuthStore } from '../store/auth'
@@ -22,6 +23,9 @@ export default function Settings() {
   } = useTranscriptionStore()
 
   const [version, setVersion] = useState<string>('')
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
+  const [syncBusy, setSyncBusy] = useState(false)
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null)
   const [pinModal, setPinModal] = useState<'enable-touchid' | 'restore-confirm' | 'restore-pin' | null>(null)
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
@@ -36,9 +40,71 @@ export default function Settings() {
   useEffect(() => {
     window.api.app.version().then(setVersion)
     window.api.app.getAutoUpdateEnabled().then(setAutoUpdateEnabledState)
+    window.api.sync.getStatus().then(setSyncStatus)
     refreshStatus()
     refreshTranscription()
   }, [refreshStatus, refreshTranscription])
+
+  useEffect(() => {
+    const unsub = window.api.sync.onEvent((evt: SyncEvent) => {
+      if (evt.type === 'merged' && (evt.inserted > 0 || evt.updated > 0)) {
+        setSyncFeedback(`Synced: +${evt.inserted} new, ${evt.updated} updated`)
+        setTimeout(() => setSyncFeedback(null), 4000)
+      }
+      window.api.sync.getStatus().then(setSyncStatus)
+    })
+    return unsub
+  }, [])
+
+  async function handleToggleSync(next: boolean) {
+    setSyncBusy(true)
+    await window.api.sync.setEnabled(next)
+    const updated = await window.api.sync.getStatus()
+    setSyncStatus(updated)
+    setSyncBusy(false)
+    if (next && updated.syncDirExists) {
+      await window.api.sync.exportNow()
+      window.api.sync.getStatus().then(setSyncStatus)
+    }
+  }
+
+  async function handlePickSyncDir() {
+    const dir = await window.api.sync.pickSyncDir()
+    if (!dir) return
+    await window.api.sync.setSyncDir(dir)
+    window.api.sync.getStatus().then(setSyncStatus)
+  }
+
+  async function handleExportNow() {
+    setSyncBusy(true)
+    setSyncFeedback(null)
+    const res = await window.api.sync.exportNow()
+    setSyncBusy(false)
+    if (res.ok) {
+      setSyncFeedback('Snapshot exported to sync folder')
+    } else {
+      setSyncFeedback(`Export failed: ${res.error ?? 'unknown error'}`)
+    }
+    window.api.sync.getStatus().then(setSyncStatus)
+    setTimeout(() => setSyncFeedback(null), 4000)
+  }
+
+  async function handleMergeNow() {
+    setSyncBusy(true)
+    setSyncFeedback(null)
+    const res = await window.api.sync.mergeNow()
+    setSyncBusy(false)
+    if (res.ok) {
+      if (res.inserted === 0 && res.updated === 0) {
+        setSyncFeedback('Already up to date')
+      } else {
+        setSyncFeedback(`Merged: +${res.inserted} new, ${res.updated} updated`)
+      }
+    } else {
+      setSyncFeedback(`Merge failed: ${res.error ?? 'unknown error'}`)
+    }
+    setTimeout(() => setSyncFeedback(null), 4000)
+  }
 
   async function handleToggleAutoUpdate(next: boolean) {
     setAutoUpdateEnabledState(next)
@@ -222,6 +288,97 @@ export default function Settings() {
             }
           />
         </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-text-muted">
+          Sync (Syncthing)
+        </h2>
+        <p className="mb-3 text-[12px] text-text-muted">
+          Share encrypted snapshots via a Syncthing-watched folder. Your data stays encrypted — Syncthing only moves ciphertext.
+        </p>
+        <div className="flex flex-col gap-px overflow-hidden rounded-xl border border-border bg-bg-elevated">
+          <Row
+            icon={syncStatus?.enabled
+              ? <RefreshCw size={16} strokeWidth={1.75} />
+              : <RefreshCwOff size={16} strokeWidth={1.75} />}
+            title="Enable Syncthing sync"
+            subtitle={
+              syncStatus?.enabled
+                ? `Active — device ID: ${syncStatus.deviceId}`
+                : 'Disabled. Enable to export encrypted snapshots to the sync folder.'
+            }
+            right={
+              <Toggle
+                checked={syncStatus?.enabled ?? false}
+                disabled={syncBusy}
+                onChange={handleToggleSync}
+              />
+            }
+          />
+          <Row
+            icon={<FolderOpen size={16} strokeWidth={1.75} />}
+            title="Sync folder"
+            subtitle={syncStatus?.syncDir ?? '~/Syncthing/DecisionJournal'}
+            right={
+              <button
+                type="button"
+                onClick={handlePickSyncDir}
+                disabled={syncBusy}
+                className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text hover:bg-nav-active disabled:opacity-50"
+              >
+                Change…
+              </button>
+            }
+          />
+          {syncStatus?.enabled && (
+            <>
+              <Row
+                icon={<ArrowUpFromLine size={16} strokeWidth={1.75} />}
+                title="Export now"
+                subtitle={
+                  syncStatus.lastExportAt > 0
+                    ? `Last exported ${new Date(syncStatus.lastExportAt).toLocaleString()}`
+                    : 'No snapshot exported yet'
+                }
+                right={
+                  <button
+                    type="button"
+                    onClick={handleExportNow}
+                    disabled={syncBusy}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text hover:bg-nav-active disabled:opacity-50"
+                  >
+                    {syncBusy ? <Loader2 size={12} className="animate-spin" /> : <ArrowUpFromLine size={12} />}
+                    Export
+                  </button>
+                }
+              />
+              <Row
+                icon={<ArrowDownToLine size={16} strokeWidth={1.75} />}
+                title="Merge now"
+                subtitle={
+                  syncStatus.lastMergeAt > 0
+                    ? `Last merged ${new Date(syncStatus.lastMergeAt).toLocaleString()}`
+                    : 'Merge happens automatically on unlock. Click to merge now.'
+                }
+                right={
+                  <button
+                    type="button"
+                    onClick={handleMergeNow}
+                    disabled={syncBusy}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text hover:bg-nav-active disabled:opacity-50"
+                  >
+                    {syncBusy ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />}
+                    Merge
+                  </button>
+                }
+              />
+            </>
+          )}
+        </div>
+        {syncFeedback && (
+          <p className="mt-2 text-[12px] text-text-muted">{syncFeedback}</p>
+        )}
       </section>
 
       <section className="mt-8">

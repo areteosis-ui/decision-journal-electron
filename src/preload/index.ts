@@ -16,6 +16,9 @@ import type {
   ModelInfo,
   OllamaEvent,
   OllamaStatus,
+  SyncEvent,
+  SyncMergeResult,
+  SyncStatus,
   ThemeMode,
   UnlockResult,
   UpdateStatus,
@@ -140,6 +143,24 @@ const api: Api = {
     },
     openExternal: (url: string): Promise<void> =>
       ipcRenderer.invoke('ollama:open-external', url)
+  },
+  sync: {
+    getStatus: (): Promise<SyncStatus> => ipcRenderer.invoke('sync:get-status'),
+    setEnabled: (enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke('sync:set-enabled', enabled),
+    setSyncDir: (dir: string): Promise<void> =>
+      ipcRenderer.invoke('sync:set-dir', dir),
+    exportNow: (): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('sync:export-now'),
+    mergeNow: (): Promise<SyncMergeResult> =>
+      ipcRenderer.invoke('sync:merge-now'),
+    pickSyncDir: (): Promise<string | null> =>
+      ipcRenderer.invoke('sync:pick-dir'),
+    onEvent: (cb: (evt: SyncEvent) => void) => {
+      const listener = (_: unknown, evt: SyncEvent) => cb(evt)
+      ipcRenderer.on('sync:event', listener)
+      return () => ipcRenderer.removeListener('sync:event', listener)
+    }
   }
 }
 
